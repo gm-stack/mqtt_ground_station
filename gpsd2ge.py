@@ -1,81 +1,82 @@
 #!/opt/local/bin/python3
 import time
 import gps
+import fastkml
+from shapely.geometry import Point, LineString
 
 gps_track = []
 
+ns = '{http://www.opengis.net/kml/2.2}'
+
+def chasecar_point():
+    last_point = gps_track[-1]
+
+    chasecar_icon_style = fastkml.styles.IconStyle(
+        ns=ns, 
+        icon_href="http://maps.google.com/mapfiles/kml/shapes/track.png", 
+        scale=2.0,
+        heading=last_point['track'])
+
+    chasecar_style = fastkml.styles.Style(
+        ns=ns,
+        styles=[chasecar_icon_style])
+
+    chasecar_placemark = fastkml.kml.Placemark(
+        ns=ns, 
+        id="chasecar_head",
+        name='Chase Car',
+        description='Chase Car Position',
+        styles=[chasecar_style])
+
+    chasecar_placemark.geometry = fastkml.geometry.Geometry(
+        ns=ns,
+        geometry=Point(last_point['lon'], last_point['lat'], last_point['alt']),
+        altitude_mode='absolute')
+
+    return chasecar_placemark
+
+def chasecar_track():
+    chasecar_track_line_style = fastkml.styles.LineStyle(
+        ns=ns,
+        color="ffff8000",
+        width=3.0)
+
+    chasecar_track_style = fastkml.styles.Style(
+        ns=ns,
+        styles=[chasecar_track_line_style])
+
+    chasecar_line = fastkml.kml.Placemark(
+        ns=ns,
+        id="chasecar_path",
+        name="Chase Car Path",
+        description="Chase Car Path",
+        styles=[chasecar_track_style])
+
+    line_data = [(loc['lon'], loc['lat'], loc['alt']) for loc in gps_track]
+    if len(line_data) == 1:
+        line_data.append(line_data[0])
+
+    chasecar_line.geometry = fastkml.geometry.Geometry(
+        ns=ns,
+        geometry=LineString(line_data),
+        altitude_mode='absolute',
+        tessellate=True)
+
+    return chasecar_line
+
 def write_kml():
-    pos_kml = """<StyleMap id="msn_track">
-        <Pair>
-            <key>normal</key>
-            <styleUrl>#sn_track</styleUrl>
-        </Pair>
-        <Pair>
-            <key>highlight</key>
-            <styleUrl>#sn_track</styleUrl>
-        </Pair>
-    </StyleMap>
-    <Style id="sn_track">
-        <IconStyle>
-            <scale>1.2</scale>
-            <Icon>
-                <href>http://maps.google.com/mapfiles/kml/shapes/track.png</href>
-            </Icon>
-            <hotSpot x="32" y="1" xunits="pixels" yunits="pixels"/>
-            <heading>%(track).1f</heading>
-        </IconStyle>
-        <ListStyle>
-        </ListStyle>
-    </Style>
-    <Placemark id="point">
-        <name>Chase Car</name>
-        <LookAt>
-            <latitude>%(lat).6f</latitude>
-            <longitude>%(lon).6f</longitude>
-            <altitude>0</altitude>
-            <heading>0</heading>
-            <tilt>0</tilt>
-            <range>1000</range>
-        </LookAt>
-        <styleUrl>#msn_track</styleUrl>
-        <Point>
-            <coordinates>%(lon).6f,%(lat).6f,%(alt).1f</coordinates>
-            <altitudeMode>absolute</altitudeMode>
-        </Point>
-    </Placemark>
-""" % gps_track[-1]
+    kml_root = fastkml.kml.KML()
 
-    track_kml = """<Style id="s_line">
-        <LineStyle>
-            <color>ffff8000</color>
-            <width>3</width>
-        </LineStyle>
-    </Style>
-    <Placemark>
-        <name>Untitled Path</name>
-        <styleUrl>#s_line</styleUrl>
-        <LineString>
-            <tessellate>1</tessellate>
-            <altitudeMode>absolute</altitudeMode>
-            <coordinates>
-            %s
-            </coordinates>
-        </LineString>
-    </Placemark>
-    """ % " ".join(["%(lon).6f,%(lat).6f,%(alt).1f" % loc for loc in gps_track])
+    kml_doc = fastkml.kml.Document(
+        ns=ns,
+        name="Chase Car")
+    kml_doc.append(chasecar_point())
+    kml_doc.append(chasecar_track())
 
-    kml = """<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
-<Document>
-    <name>Chase Car.kml</name>
-    %s
-    %s
-</Document>
-</kml>
-""" % (pos_kml, track_kml)
+    kml_root.append(kml_doc)
 
     with open("/tmp/gps_loc.kml", 'w') as kml_file:
-        kml_file.write(kml)
+        kml_file.write(kml_doc.to_string())
 
 gpsd = gps.gps(mode=gps.WATCH_ENABLE)
 for msg in (msg for msg in gpsd if msg['class'] == 'TPV'):
