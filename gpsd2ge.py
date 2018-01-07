@@ -12,7 +12,7 @@ def write_kml():
         </Pair>
         <Pair>
             <key>highlight</key>
-            <styleUrl>#sh_track</styleUrl>
+            <styleUrl>#sn_track</styleUrl>
         </Pair>
     </StyleMap>
     <Style id="sn_track">
@@ -22,18 +22,6 @@ def write_kml():
                 <href>http://maps.google.com/mapfiles/kml/shapes/track.png</href>
             </Icon>
             <hotSpot x="32" y="1" xunits="pixels" yunits="pixels"/>
-            <heading>%(track).1f</heading>
-        </IconStyle>
-        <ListStyle>
-        </ListStyle>
-    </Style>
-    <Style id="sh_track">
-        <IconStyle>
-            <scale>1.4</scale>
-            <Icon>
-                <href>http://maps.google.com/mapfiles/kml/shapes/track.png</href>
-            </Icon>
-            <hotSpot x="32" y="32" xunits="pixels" yunits="pixels"/>
             <heading>%(track).1f</heading>
         </IconStyle>
         <ListStyle>
@@ -86,7 +74,7 @@ def write_kml():
 </kml>
 """ % (pos_kml, track_kml)
 
-    with open("/tmp/ground_station.kml", 'w') as kml_file:
+    with open("/tmp/gps_loc.kml", 'w') as kml_file:
         kml_file.write(kml)
 
 gpsd = gps.gps(mode=gps.WATCH_ENABLE)
